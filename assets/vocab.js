@@ -1,6 +1,6 @@
 // Vocabulary: the teacher's word lists, each a toggle, with export for a flashcard app. Learners cannot add words
 // (teacher's decision, 2026-10-05); words a learner added before that still show in their own list until removed.
-// A checked word (已掌握) and any phrase (扇贝 takes single words only) are left out when a list is copied or
+// A checked word (已掌握) and any phrase (a flashcard app takes single words only) are left out when a list is copied or
 // downloaded; Check all / Uncheck all work per list.
 (() => {
   const N = window.Erin, A = N.A, app = document.getElementById('app');
@@ -21,7 +21,7 @@
       const checked = l.words.filter((w) => w.known).length;
       return `<details class="nd-fold nd-vocab-list" data-list="${N.esc(l.id)}"${open}><summary><small>${l.words.length} word${l.words.length === 1 ? '' : 's'}${checked ? ` · ${checked} checked` : ''}</small>${N.esc(l.title)}</summary><div class="nd-fold-body">
         ${l.note ? `<p class="nd-note">${N.esc(l.note)}</p>` : ''}
-        ${l.words.length ? `<div class="nd-actions"><button class="nd-btn quiet" type="button" data-checkall="${N.esc(l.id)}"${checked === l.words.length ? ' disabled' : ''}>Check all<small>全部勾选</small></button><button class="nd-btn quiet" type="button" data-uncheckall="${N.esc(l.id)}"${checked ? '' : ' disabled'}>Uncheck all<small>全部取消</small></button><button class="nd-btn quiet" type="button" data-copy="${N.esc(l.id)}">Copy unchecked words<small>复制没勾选的单词（不含词组，可粘贴到扇贝）</small></button><button class="nd-btn quiet" type="button" data-download="${N.esc(l.id)}">Download .txt<small>下载没勾选的单词</small></button></div><p class="nd-msg" data-copymsg="${N.esc(l.id)}" role="status"></p>` : ''}
+        ${l.words.length ? `<div class="nd-actions"><button class="nd-btn quiet" type="button" data-checkall="${N.esc(l.id)}"${checked === l.words.length ? ' disabled' : ''}>Check all<small>全部勾选</small></button><button class="nd-btn quiet" type="button" data-uncheckall="${N.esc(l.id)}"${checked ? '' : ' disabled'}>Uncheck all<small>全部取消</small></button><button class="nd-btn quiet" type="button" data-copy="${N.esc(l.id)}">Copy unchecked words<small>复制没勾选的单词（不含词组，可可以直接复制）</small></button><button class="nd-btn quiet" type="button" data-download="${N.esc(l.id)}">Download .txt<small>下载没勾选的单词</small></button></div><p class="nd-msg" data-copymsg="${N.esc(l.id)}" role="status"></p>` : ''}
         ${words.length ? `<ul class="nd-words">${words.map(wordRow).join('')}</ul>` : '<p class="nd-empty">No words yet.</p>'}</div></details>`;
     }).join('') || '<p class="nd-empty">No words match. 没有找到。</p>';
   }
@@ -50,8 +50,8 @@
   const skippedNote = (id, n) => {
     const l = listById(id), checked = l.words.filter((w) => w.known).length, phrases = l.words.filter((w) => !w.known && isPhrase(w)).length;
     const en = [checked ? `${checked} checked` : '', phrases ? `${phrases} phrase${phrases === 1 ? '' : 's'}` : ''].filter(Boolean).join(', ');
-    const zh = [checked ? `已勾选的 ${checked} 个` : '', phrases ? `词组 ${phrases} 个（扇贝不能加）` : ''].filter(Boolean).join('、');
-    return `Copied ${n} words${en ? `, skipped ${en}` : ''}. 已复制 ${n} 个单词${zh ? `，跳过${zh}` : ''}，可粘贴到背单词软件。`;
+    const zh = [checked ? `已勾选的 ${checked} 个` : '', phrases ? `词组 ${phrases} 个` : ''].filter(Boolean).join('、');
+    return `Copied ${n} words${en ? `, skipped ${en}` : ''}. 已复制 ${n} 个单词${zh ? `，跳过${zh}` : ''}，可以直接粘贴。`;
   };
   const redraw = () => { app.querySelector('[data-lists]').innerHTML = listsHtml(); };
   const say = (id, text, kind) => { const m = app.querySelector(`[data-copymsg="${id}"]`); if (m) { m.textContent = text; m.className = 'nd-msg' + (kind ? ' ' + kind : ''); } };
