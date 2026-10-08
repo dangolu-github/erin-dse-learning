@@ -27,7 +27,7 @@ window.ErinRecorder = (() => {
     const item = o.item;
     const max = item.maxSeconds || 180;
     const st = { value: o.value || null, meta: o.meta || null, url: '', mode: 'idle', revealed: !item.revealOnStart || Boolean(o.value) || o.disabled, message: '', error: false, pending: null };
-    let recorder = null, stream = null, ticker = null, meter = null, context = null, prepTimer = null, asked = 0;
+    let recorder = null, stream = null, ticker = null, meter = null, context = null, prepTimer = null, asked = 0, discarding = false;
     box.innerHTML = `<p class="nd-prompt-line">${item.n ? `<span class="nd-n">${N.esc(item.n)}</span>` : ''}<span data-prompt></span></p><div class="nd-speak-panel"></div>`;
     const promptEl = box.querySelector('[data-prompt]'), panel = box.querySelector('.nd-speak-panel');
 
@@ -39,7 +39,7 @@ window.ErinRecorder = (() => {
       if (st.mode === 'prep') {
         html = `<div class="nd-prep"><span>Preparation 准备时间</span><span class="nd-rec-time" data-prep></span>${canRecord() ? '<button class="nd-btn" type="button" data-act="record">● Start recording now<small>现在开始录音</small></button>' : ''}<button class="nd-btn quiet" type="button" data-act="cancel">Cancel<small>取消</small></button></div>`;
       } else if (st.mode === 'recording') {
-        html = `<div class="nd-rec" role="status"><span class="nd-rec-dot"></span><span class="nd-rec-time" data-time>0:00 / ${N.clock(max)}</span><span class="nd-level"><i></i></span><button class="nd-btn danger" type="button" data-act="stop">■ Stop<small>停止并保存</small></button></div>`;
+        html = `<div class="nd-rec" role="status"><span class="nd-rec-dot"></span><span class="nd-rec-time" data-time>0:00 / ${N.clock(max)}</span><span class="nd-level"><i></i></span><button class="nd-btn danger" type="button" data-act="stop">■ Stop<small>停止并保存</small></button><button class="nd-btn quiet" type="button" data-act="discard">Cancel<small>取消，不保存</small></button></div>`;
       } else if (st.mode === 'asking') {
         html = '<div class="nd-prep"><span>Allow the microphone when your browser asks. 请在浏览器弹出的提示里允许使用麦克风。</span><button class="nd-btn quiet" type="button" data-act="cancel">Cancel<small>取消</small></button></div>';
       } else if (st.mode === 'uploading') {
@@ -113,8 +113,11 @@ window.ErinRecorder = (() => {
       active = api;
       const chunks = [];
       const started = performance.now();
+      discarding = false;
       recorder.ondataavailable = (event) => { if (event.data && event.data.size) chunks.push(event.data); };
       recorder.onstop = () => {
+        // Cancelled mid-take: nothing is saved and the previous answer, if any, stays as it was.
+        if (discarding) { discarding = false; recorder = null; release(); st.mode = 'idle'; note('Recording cancelled. Nothing was saved. 已取消，没有保存。'); draw(); return; }
         // A take that ran to the limit is reported as the limit, not a moment over it.
         const seconds = Math.min(max, Math.round((performance.now() - started) / 1000));
         const blob = new Blob(chunks, { type: (recorder.mimeType || type || 'audio/webm').split(';')[0] });
@@ -154,6 +157,13 @@ window.ErinRecorder = (() => {
     function stop() {
       clearInterval(ticker); ticker = null;
       if (recorder && recorder.state !== 'inactive') recorder.stop();
+    }
+
+    // Throws the current take away. The learner can record as many times as they like before submitting.
+    function discard() {
+      if (st.mode !== 'recording') return;
+      discarding = true;
+      stop();
     }
 
     async function save(blob, type, name, kind, seconds) {
@@ -211,6 +221,7 @@ window.ErinRecorder = (() => {
       if (act === 'prep') startPrep();
       else if (act === 'record') startRecording();
       else if (act === 'stop') stop();
+      else if (act === 'discard') discard();
       else if (act === 'cancel') { clearPrep(); asked += 1; st.mode = 'idle'; note(''); draw(); }
       else if (act === 'play') play();
       else if (act === 'retry' && st.pending) save(st.pending.blob, st.pending.type, st.pending.name, st.pending.kind, st.pending.seconds);
