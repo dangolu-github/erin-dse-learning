@@ -184,6 +184,15 @@ fieldset.nd-q { min-width: 0; }
 .nd-result h2 { margin: 0 0 6px; font-size: 20px; }
 .nd-score { font-size: 28px; font-weight: 850; color: var(--accent); }
 .nd-pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Teacher-checked transcript with her marks (2026-10-20) */
+.nd-tx { margin: 10px 0 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 16px; line-height: 1.8; }
+.nd-tx-head { margin: 0 0 4px; font-size: 13px; font-weight: 800; color: var(--good); }
+.nd-tx-legend { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.tx-wrong { color: var(--bad); text-decoration: line-through; text-decoration-thickness: 2px; }
+.tx-fix { color: var(--good); font-weight: 700; } .tx-fix::before { content: " "; }
+.tx-awk { background: var(--warn-soft); text-decoration: underline wavy var(--warn); text-underline-offset: 3px; }
+.tx-better { color: var(--warn); font-weight: 700; } .tx-better::before { content: " ("; } .tx-better::after { content: ")"; }
+.tx-note { color: var(--good); font-weight: 700; }
 .nd-submit { margin-top: 26px; padding-top: 20px; border-top: 2px solid var(--line); }
 
 /* Mistake log */
