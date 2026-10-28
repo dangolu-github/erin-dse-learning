@@ -5,7 +5,12 @@
   const N = window.Erin, A = N.A, app = document.getElementById('app');
   const taskId = new URLSearchParams(location.search).get('id') || '';
   const S = { task: null, control: null, env: '', responses: {}, files: {}, submission: null, saveId: '', submissionId: '', clientUpdatedAt: '', secondsUsed: 0,
-    audioDone: {}, dirty: false, saving: false, syncedSeconds: -1, blocked: '', uploads: 0, timer: null, retryDelay: 4000, recorders: [] };
+    audioDone: {}, dirty: false, saving: false, syncedSeconds: -1, blocked: '', uploads: 0, timer: null, retryDelay: 4000, recorders: [],
+    // One upload that has not been confirmed yet keeps its own ID here, so pressing send again asks the
+    // course for the *same* upload instead of a new one, and the file it already saved is reused rather
+    // than copied. Kept until that upload is confirmed; a different recording or a different file is a
+    // different upload and gets its own ID.
+    pending: {} };
   const storeKey = () => `erin-dse-task:${S.env}:${taskId}:v${S.control.resetVersion}`;
   const items = () => S.task.blocks.filter((b) => b.type === 'q');
   const hasAnswer = (v) => v != null && (typeof v === 'string' ? v.trim() !== '' : Boolean(v.file) || Boolean(v.files && v.files.length));
@@ -22,7 +27,7 @@
   }
   function writeLocal() {
     try {
-      localStorage.setItem(storeKey(), JSON.stringify({ saveId: S.saveId, submissionId: S.submissionId, responses: S.responses, files: S.files, clientUpdatedAt: S.clientUpdatedAt, secondsUsed: S.secondsUsed, audioDone: S.audioDone }));
+      localStorage.setItem(storeKey(), JSON.stringify({ saveId: S.saveId, submissionId: S.submissionId, responses: S.responses, files: S.files, clientUpdatedAt: S.clientUpdatedAt, secondsUsed: S.secondsUsed, audioDone: S.audioDone, pending: S.pending }));
     } catch (error) { /* private mode: the server copy still saves */ }
   }
 
@@ -36,6 +41,7 @@
     S.saveId = local.saveId || N.newId('save');
     S.submissionId = local.submissionId || '';
     S.audioDone = local.audioDone || {};
+    S.pending = local.pending || {};
     if (S.submission) {
       S.responses = S.submission.responses || {};
       S.secondsUsed = S.submission.secondsUsed || 0;
@@ -344,15 +350,29 @@
 
   // ---------- files and recordings ----------
 
-  async function sendFile(itemId, blob, type, name, kind, seconds) {
-    const fileId = N.newId('file');
+  // `slot` names this one logical upload: a recording take, or one chosen file. Its upload ID is written
+  // down before the upload starts and kept until the file is attached to this page's answers, so every
+  // retry - including after a reload, and including after something went wrong on this page *after* the
+  // course had already saved the file - is the same upload, and the course reuses the file it already made.
+  //
+  // The ID is never let go because an upload failed. An upload whose outcome we do not know is exactly the
+  // case where asking for a new ID would create a second copy of one page, so a failure keeps the ID and
+  // the next attempt finishes the same upload. A genuinely different file is a different slot and gets its
+  // own ID without any of this.
+  async function sendFile(itemId, blob, type, name, kind, seconds, slotKey) {
+    const slot = slotKey ? `${itemId}|${slotKey}` : '';
+    const fileId = (slot && S.pending[slot]) || N.newId('file');
+    if (slot && S.pending[slot] !== fileId) { S.pending[slot] = fileId; writeLocal(); }
     S.uploads += 1;
     try {
       const data = await N.toBase64(blob), submissionOrigin = await N.origin();
       const result = await A.post('uploadFile', { taskId, itemId, fileId, type, name, kind, seconds: seconds || 0, data, submissionOrigin });
       const meta = { name: result.name || name, mime: type, bytes: result.bytes || blob.size, seconds: seconds || 0, kind };
       S.files[fileId] = meta;
-      return { fileId, meta };
+      // release() belongs to the caller: it runs only once this file is in S.responses and written to this
+      // device. Releasing here instead would drop the identity of a file that the answers do not reference
+      // yet, and the next attempt would then ask for a second copy of it.
+      return { fileId, meta, release: () => { if (slot) { delete S.pending[slot]; writeLocal(); } } };
     } finally { S.uploads -= 1; }
   }
 
@@ -363,8 +383,11 @@
       const value = S.responses[item.id] && S.responses[item.id].file ? S.responses[item.id] : null;
       S.recorders.push(window.ErinRecorder.mount(box, {
         item, value, meta: value ? S.files[value.file] : null, disabled: readOnly(),
-        upload: (take) => sendFile(item.id, take.blob, take.type, take.name, take.kind, take.seconds),
-        onChange: (next) => { S.responses[item.id] = next; changed(); },
+        // take.takeId stays the same while one take is being saved, so "Save this answer again" is a retry
+        // of that take; recording again makes a new take with a new ID, which is a new upload.
+        upload: (take) => sendFile(item.id, take.blob, take.type, take.name, take.kind, take.seconds, take.takeId),
+        // The take is attached and written to this device first; only then is its upload identity released.
+        onChange: (next, meta, release) => { S.responses[item.id] = next; changed(); if (release) release(); },
         playback: (fileId) => N.loadMedia('upload:' + fileId)
       }));
     });
@@ -376,7 +399,7 @@
     const files = (S.responses[id] || {}).files || [];
     list.innerHTML = files.map((f) => {
       const meta = S.files[f] || {};
-      return `<li><span>✓ ${N.esc(meta.name || 'File')}${meta.bytes ? ' · ' + N.size(meta.bytes) : ''}</span>${readOnly() ? '' : `<button class="nd-linkbtn" type="button" data-remove="${f}" data-item="${id}">Remove</button>`}</li>`;
+      return `<li><span>✓ ${N.esc(String(meta.name || 'File').replace(/_u[0-9a-f]{16}(?=\.[^.]+$)/, ''))}${meta.bytes ? ' · ' + N.size(meta.bytes) : ''}</span>${readOnly() ? '' : `<button class="nd-linkbtn" type="button" data-remove="${f}" data-item="${id}">Remove</button>`}</li>`;
     }).join('');
   }
 
@@ -400,6 +423,13 @@
     return { blob: file, type, name: file.name };
   }
 
+  // One chosen file, named by what the browser knows about it. Choosing the same file again after a failed
+  // upload is a retry of that upload; choosing a different file is a different upload.
+  const fileSlot = (file) => `${file.name}|${file.size}|${file.lastModified || 0}|${file.type || ''}`;
+  // A retry must send the same bytes, or the course refuses the ID as a different file. Phone photos are
+  // re-encoded before sending, so the prepared blob of an unconfirmed upload is kept for this page's life.
+  const prepared = new Map();
+
   async function uploadFiles(id, files, input) {
     const message = app.querySelector(`[data-filemsg="${id}"]`);
     const bar = input.closest('.nd-q').querySelector('.nd-progress');
@@ -409,21 +439,34 @@
     bar.hidden = false;
     const fill = bar.querySelector('i');
     fill.style.width = '5%';
+    // Each page's upload identity is released only when the whole selection has gone through. A page that
+    // arrives early must keep its identity while a later page of the same selection is still failing:
+    // letting it go would mean the next press asked for a new upload ID for a page that is already saved,
+    // and that is exactly how the second copy appeared.
+    const done = [];
     try {
       for (let i = 0; i < files.length; i += 1) {
         say(`Sending ${i + 1} of ${files.length}… Keep this page open. 正在上传，请不要关闭页面。`);
-        const ready = await prepare(files[i]);
+        const slot = fileSlot(files[i]);
+        const ready = prepared.get(slot) || await prepare(files[i]);
+        prepared.set(slot, ready);
         if (ready.blob.size > 12 * 1024 * 1024) throw new Error(`${files[i].name} is larger than 12 MB. Take the photo again at a smaller size.`);
-        const sent = await sendFile(id, ready.blob, ready.type, ready.name, 'uploaded', 0);
-        const current = ((S.responses[id] || {}).files || []).concat(sent.fileId);
+        const sent = await sendFile(id, ready.blob, ready.type, ready.name, 'uploaded', 0, slot);
+        // Retrying a part-finished selection sends its already-saved pages again, and each of those comes
+        // back as the same file. It is listed once: a retry must not show a page twice or submit it twice.
+        const current = ((S.responses[id] || {}).files || []).slice();
+        if (current.indexOf(sent.fileId) < 0) current.push(sent.fileId);
         S.responses[id] = { files: current };
         drawFiles(id);
         changed();
+        done.push({ slot, release: sent.release });
         fill.style.width = Math.round(((i + 1) / files.length) * 100) + '%';
       }
+      // Every page is attached and written to this device, so this selection is finished with its IDs.
+      done.forEach((page) => { page.release(); prepared.delete(page.slot); });
       say(`Uploaded ${files.length} file${files.length === 1 ? '' : 's'}. 上传成功。`, 'success');
     } catch (error) {
-      say((error && error.message) || 'The upload did not finish. Please try again.', 'error');
+      say(((error && error.message) || 'The upload did not finish.') + ' Choose the same files and press again to finish this upload. 请再选同样的文件重试。', 'error');
     } finally {
       input.value = '';
       setTimeout(() => { bar.hidden = true; }, 1200);

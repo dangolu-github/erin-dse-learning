@@ -22,7 +22,10 @@ window.ErinRecorder = (() => {
     audio.src = url;
   });
 
-  // o: { item, value, meta, disabled, upload({blob,type,name,kind,seconds}) → {fileId, meta}, onChange(value, meta), playback(fileId) → Blob }
+  // o: { item, value, meta, disabled, upload({blob,type,name,kind,seconds,takeId}) → {fileId, meta, release},
+  //      onChange(value, meta, release), playback(fileId) → Blob }
+  // One take keeps one takeId for as long as it takes to save it, and release() is called only after the
+  // answer has been attached, so a retry of that take is always the same file rather than a second copy.
   function mount(box, o) {
     const item = o.item;
     const max = item.maxSeconds || 180;
@@ -166,7 +169,11 @@ window.ErinRecorder = (() => {
       stop();
     }
 
-    async function save(blob, type, name, kind, seconds) {
+    // One take, one ID, for as long as it takes to save it. "Save this answer again" repeats the same take
+    // with the same takeId, so the course reuses the file it already made instead of keeping a second copy
+    // of the same answer; recording again, or choosing another audio file, is a new take with a new ID.
+    async function save(blob, type, name, kind, seconds, takeId) {
+      const take = takeId || N.newId('take');
       if (blob.size > MAX_BYTES) {
         st.mode = 'idle';
         note(`This audio is ${N.size(blob.size)}; the limit is 12 MB. Record a shorter answer, or save the file as m4a or mp3. 文件超过 12 MB，请缩短录音或改存为 m4a / mp3。`, true);
@@ -176,17 +183,21 @@ window.ErinRecorder = (() => {
       st.mode = 'uploading'; note('');
       draw();
       try {
-        const result = await o.upload({ blob, type, name, kind, seconds });
+        const result = await o.upload({ blob, type, name, kind, seconds, takeId: take });
         if (st.url) URL.revokeObjectURL(st.url);
         if (st.pending && st.pending.url) URL.revokeObjectURL(st.pending.url);
         st.pending = null;
         st.url = URL.createObjectURL(blob);
         st.value = { file: result.fileId }; st.meta = result.meta;
         st.mode = 'idle'; note('');
-        o.onChange(st.value, result.meta);
+        // The answer is attached and written to the device inside onChange, and only then is this take's
+        // upload identity released. If anything here fails after the course had already saved the file,
+        // the take keeps its ID below, so pressing save again is still this one take and one file.
+        o.onChange(st.value, result.meta, result.release);
       } catch (error) {
         if (st.pending && st.pending.url) URL.revokeObjectURL(st.pending.url);
-        st.pending = { blob, type, name, kind, seconds, url: URL.createObjectURL(blob) };
+        // The take and its ID are both kept, so the retry below is the same upload, not another one.
+        st.pending = { blob, type, name, kind, seconds, takeId: take, url: URL.createObjectURL(blob) };
         st.mode = 'idle';
         note(((error && error.message) || 'The answer could not be saved.') + ' Your audio is still here: press “Save this answer again”. 录音还在，请点“重新保存”。', true);
       }
@@ -224,7 +235,7 @@ window.ErinRecorder = (() => {
       else if (act === 'discard') discard();
       else if (act === 'cancel') { clearPrep(); asked += 1; st.mode = 'idle'; note(''); draw(); }
       else if (act === 'play') play();
-      else if (act === 'retry' && st.pending) save(st.pending.blob, st.pending.type, st.pending.name, st.pending.kind, st.pending.seconds);
+      else if (act === 'retry' && st.pending) save(st.pending.blob, st.pending.type, st.pending.name, st.pending.kind, st.pending.seconds, st.pending.takeId);
     });
     panel.addEventListener('change', (event) => {
       const input = event.target.closest('[data-file]');
