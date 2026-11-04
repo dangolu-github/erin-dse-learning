@@ -139,8 +139,10 @@ fieldset.nd-q { min-width: 0; }
 .nd-opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 .nd-opt input { margin-top: 5px; }
 .nd-letter { font-weight: 800; color: var(--accent); }
-.nd-gap { display: flex; align-items: baseline; gap: 4px; }
-.nd-gap-line { flex: 1; line-height: 2.3; }
+.nd-gap { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+.nd-gap-line { flex: 1 1 auto; min-width: 0; line-height: 2.3; overflow-wrap: anywhere; }
+/* Marking appends the verdict as a sibling of the gap line: give it its own full-width row. */
+.nd-gap > .nd-verdict { flex: 1 0 100%; min-width: 0; }
 .nd-gap input { width: min(100%, 22em); padding: 5px 9px; border: 0; border-bottom: 2px solid var(--accent); border-radius: 6px 6px 0 0; background: #f4f7fc; }
 .nd-q textarea, .nd-q input[type=text] { max-width: 100%; }
 .nd-q textarea { display: block; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; line-height: 1.7; resize: vertical; background: #fff; }

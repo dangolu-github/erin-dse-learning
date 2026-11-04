@@ -199,7 +199,9 @@
       if (i.correct) extra.push(`<p class="nd-pre"><span class="label">Correction 改正:</span> ${N.esc(i.correct)}</p>`);
       if (i.key) extra.push(`<p><span class="label">Answer 答案:</span> ${N.esc(i.key)}</p>`);
       if (i.accept) extra.push(`<p><span class="label">Answer 答案:</span> ${i.accept.map(N.esc).join(' &nbsp;/&nbsp; ')}</p>`);
-      if (i.explain) extra.push(`<p>${i.explain}</p>`);
+      // The explanation arrives only while the task's Show explanations switch is on; off, there is no field
+      // here at all, so nothing of it is in the page source, the DOM or the printed copy. It starts folded.
+      if (i.explain) extra.push(`<details class="nd-explain"><summary>Explanation 解析</summary><div class="nd-rich">${i.explain}</div></details>`);
       if (i.model) extra.push(`<details><summary>Model answer 参考答案</summary><div class="nd-rich">${i.model}</div></details>`);
       if (i.transcript) extra.push(`<div class="nd-tx"><p class="nd-tx-head">Teacher-checked transcript 老师核对的录音稿</p><div class="nd-pre">${markup(i.transcript)}</div><p class="nd-tx-legend"><span class="tx-wrong">wrong</span><span class="tx-fix">right</span> 错误和改正 &nbsp; <span class="tx-awk">awkward</span><span class="tx-better">better</span> 别扭的表达和更自然的说法 &nbsp; <span class="tx-note">[note]</span> 老师的批注</p></div>`);
       box.insertAdjacentHTML('beforeend', `<div class="nd-verdict ${i.verdict}"><p class="label">${labels[i.verdict]}</p>${extra.join('')}</div>`);
