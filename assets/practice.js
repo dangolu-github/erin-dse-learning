@@ -27,7 +27,7 @@
       message.textContent = '';
     } catch (error) {
       body.innerHTML = '<div class="nd-actions"><button class="nd-btn quiet" type="button" data-retry>Try again<small>重新加载</small></button></div>';
-      message.textContent = (error && error.message) || 'The recordings could not be loaded.'; message.className = 'nd-msg error';
+      message.textContent = 'The recordings could not be loaded. Please try again.'; message.className = 'nd-msg error';
       body.querySelector('[data-retry]').addEventListener('click', () => mountEcho(box, lesson));
     }
   }

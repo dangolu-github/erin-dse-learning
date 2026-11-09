@@ -76,7 +76,7 @@
         <p id="status" class="status" role="status" aria-live="polite" hidden></p>
         <audio id="audio" preload="metadata"></audio>
       </div>
-      <div class="text-panel"><div class="text-head"><h3>Transcript</h3>
+      <div class="text-panel"><div class="text-head"><h3>Text</h3>
         <button class="toggle" id="toggle" aria-expanded="false" aria-controls="transcript"><span id="toggle-label">Show text</span><span class="switch" aria-hidden="true"><i></i></span></button>
       </div><div id="transcript" hidden></div></div>
     </section>`;
