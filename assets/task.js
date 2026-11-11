@@ -187,23 +187,69 @@
     return out + N.esc(text.slice(last));
   }
 
+  // A correction as the teacher wrote it, with its repairs marked: "wrong → right" lines cross out the left side
+  // and show the right side as the repair; "[words]" written into an answer is a repair in place.
+  function correctionHtml(text) {
+    return String(text == null ? '' : text).split('\n').map((line) => {
+      const arrow = line.split(/\s+→\s+/);
+      if (arrow.length === 2) return `<span class="tx-wrong">${N.esc(arrow[0])}</span> → <span class="tx-fix ex-repair">${N.esc(arrow[1])}</span>`;
+      return N.esc(line).replace(/\[([^\]\n]+)\]/g, '<span class="tx-fix ex-repair">[$1]</span>');
+    }).join('\n');
+  }
+
+  // The checked work in the task's own layout (teacher rule, 2026-11-10: 批改页面要延用原提交页面或者题目页面的排版；
+  // 答案和批改要直接显示出来). A gap shows the answer where the box was, marked when wrong with the right answer beside
+  // it; a choice marks the one chosen and the right one; an optional box left empty is not part of the work.
+  function markInPlace(box, i) {
+    const right = i.correct || i.key || (i.accept || [])[0] || '';
+    const wrong = ['wrong', 'blank', 'partial'].indexOf(i.verdict) >= 0;
+    const input = box.querySelector('input[type=text][data-input]');
+    const inline = Boolean(input);
+    if (input) {
+      const written = input.value || '';
+      const fill = document.createElement('span');
+      fill.className = 'ex-fill' + (written ? '' : ' ex-empty');
+      fill.innerHTML = (wrong && right ? `${written ? `<del class="ex-del">${N.esc(written)}</del> ` : ''}<ins class="ex-ins">[${N.esc(right)}]</ins>` : N.esc(written) || '&nbsp;') +
+        ` <span class="ex-mark ${i.verdict}" aria-hidden="true">${i.verdict === 'correct' ? '✓' : wrong ? '✗' : ''}</span>`;
+      input.replaceWith(fill);
+    }
+    const chosen = S.responses[i.id];
+    const key = i.verdict === 'correct' ? chosen : /^[A-H]$/.test(String(i.key || '').trim()) ? String(i.key).trim() : '';
+    box.querySelectorAll('.nd-opt input[type=radio]').forEach((radio) => {
+      const label = radio.closest('.nd-opt'), letter = radio.value;
+      if (letter === chosen) label.classList.add(letter === key || i.verdict === 'correct' ? 'ex-right' : 'ex-wrong');
+      else if (letter === key) label.classList.add('ex-key');
+      if (letter === key || (letter === chosen && i.verdict === 'correct')) label.insertAdjacentHTML('beforeend', '<span class="ex-sign good" aria-hidden="true">✓</span>');
+      else if (letter === chosen && wrong) label.insertAdjacentHTML('beforeend', '<span class="ex-sign bad" aria-hidden="true">✗</span>');
+      radio.hidden = true;
+    });
+    return inline;
+  }
+
   function showFeedback() {
     const r = S.submission.result || {};
     if (!r.released) return;
+    app.classList.add('ex-checked');
     const labels = { correct: '✓ Correct 正确', evaluated: '◎ Evaluated 已批改', wrong: '✗ Not correct 不正确', partial: '◐ Partly correct 部分正确', blank: '✗ Not answered 未作答', pending: 'Waiting for your teacher 等待批改', skipped: '' };
     (r.items || []).forEach((i) => {
       const box = app.querySelector(`[data-q="${i.id}"]`);
-      if (!box || !labels[i.verdict]) return;
+      if (!box) return;
+      // An optional box she left empty is not part of the checked work.
+      if (i.verdict === 'skipped' && !String(S.responses[i.id] || '').trim()) { box.hidden = true; return; }
+      if (!labels[i.verdict]) return;
+      // A gap now shows its right answer where the answer was, so the box below does not repeat it.
+      const inline = markInPlace(box, i);
       const extra = [];
       if (i.comment) extra.push(`<p class="nd-pre"><span class="label">Teacher:</span> ${N.esc(i.comment)}</p>`);
-      if (i.correct) extra.push(`<p class="nd-pre"><span class="label">Correction 改正:</span> ${N.esc(i.correct)}</p>`);
-      if (i.key) extra.push(`<p><span class="label">Answer 答案:</span> ${N.esc(i.key)}</p>`);
-      if (i.accept) extra.push(`<p><span class="label">Answer 答案:</span> ${i.accept.map(N.esc).join(' &nbsp;/&nbsp; ')}</p>`);
+      if (i.correct && !inline) extra.push(`<p class="nd-pre"><span class="label">Correction 改正:</span> ${correctionHtml(i.correct)}</p>`);
+      if (i.key && !inline) extra.push(`<p><span class="label">Answer 答案:</span> ${N.esc(i.key)}</p>`);
+      if (i.accept && !inline) extra.push(`<p><span class="label">Answer 答案:</span> ${i.accept.map(N.esc).join(' &nbsp;/&nbsp; ')}</p>`);
       // The explanation arrives only while the task's Show explanations switch is on; off, there is no field
       // here at all, so nothing of it is in the page source, the DOM or the printed copy. It starts folded.
       if (i.explain) extra.push(`<details class="nd-explain"><summary>Explanation 解析</summary><div class="nd-rich">${i.explain}</div></details>`);
       if (i.model) extra.push(`<details><summary>Model answer 参考答案</summary><div class="nd-rich">${i.model}</div></details>`);
-      if (i.transcript) extra.push(`<div class="nd-tx"><p class="nd-tx-head">Teacher-checked transcript 老师核对的录音稿</p><div class="nd-pre">${markup(i.transcript)}</div><p class="nd-tx-legend"><span class="tx-wrong">wrong</span><span class="tx-fix">right</span> 错误和改正 &nbsp; <span class="tx-awk">awkward</span><span class="tx-better">better</span> 别扭的表达和更自然的说法 &nbsp; <span class="tx-note">[note]</span> 老师的批注</p></div>`);
+      // Her own words with the corrections in them; no process label and no colour key (learner-language rule).
+      if (i.transcript) extra.push(`<div class="nd-tx"><p class="nd-tx-head">Your answer, checked 你的回答（批改）</p><div class="nd-pre">${markup(i.transcript)}</div></div>`);
       box.insertAdjacentHTML('beforeend', `<div class="nd-verdict ${i.verdict}"><p class="label">${labels[i.verdict]}</p>${extra.join('')}</div>`);
     });
   }

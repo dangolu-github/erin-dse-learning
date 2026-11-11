@@ -195,6 +195,24 @@ fieldset.nd-q { min-width: 0; }
 .tx-awk { background: var(--warn-soft); text-decoration: underline wavy var(--warn); text-underline-offset: 3px; }
 .tx-better { color: var(--warn); font-weight: 700; } .tx-better::before { content: " ("; } .tx-better::after { content: ")"; }
 .tx-note { color: var(--good); font-weight: 700; }
+/* Checked work in the task layout (2026-11-10): the answer where the box was, its repair beside it. */
+.ex-fill { padding: 3px 8px; border-bottom: 2px solid var(--accent); border-radius: 6px 6px 0 0; background: #f4f7fc; line-height: 1.5; font-weight: 600; overflow-wrap: anywhere; }
+.ex-fill.ex-empty { display: inline-block; min-width: 5em; }
+.ex-del { background: var(--bad-soft); color: var(--bad); text-decoration: line-through; padding: 0 .1em; border-radius: 3px; }
+.ex-ins { background: var(--good-soft); color: var(--good); text-decoration: none; font-weight: 700; padding: 0 .1em; border-radius: 3px; }
+.ex-mark { font-weight: 800; }
+.ex-mark.correct { color: var(--good); }
+.ex-mark.wrong, .ex-mark.blank, .ex-mark.partial { color: var(--bad); }
+.ex-checked .nd-opt { cursor: default; }
+.ex-checked .nd-opt.ex-right { border-color: var(--good); background: var(--good-soft); }
+.ex-checked .nd-opt.ex-wrong { border-color: var(--bad); background: var(--bad-soft); }
+.ex-checked .nd-opt.ex-wrong > span:nth-of-type(2) { text-decoration: line-through; }
+.ex-checked .nd-opt.ex-key { border-color: var(--good); border-style: dashed; background: var(--good-soft); }
+.ex-sign { margin-left: auto; padding-left: 8px; font-weight: 800; }
+.ex-sign.good { color: var(--good); }
+.ex-sign.bad { color: var(--bad); }
+.ex-repair { color: #c01919; }
+@media print { .ex-fill { background: none !important; border-bottom: 1px solid #333 !important; } .ex-del { background: none !important; color: #444 !important; } .ex-ins { background: none !important; color: #c01919 !important; } }
 .nd-submit { margin-top: 26px; padding-top: 20px; border-top: 2px solid var(--line); }
 
 /* Mistake log */
