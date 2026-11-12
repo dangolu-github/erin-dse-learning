@@ -35,11 +35,16 @@
         ? `${lists.length > 1 ? `<div class="nd-actions"><button class="nd-btn" type="button" data-copy-words="*">Copy all unchecked words<small>复制本课没勾选的全部单词</small></button></div>` : ''}${lists.map(wordTable).join('')}<p class="nd-msg" id="copy-msg"></p>`
         : '<p class="nd-empty">No word list for this class yet. 本课单词稍后发布。</p>';
       const classWords = classWordsHtml();
+      // Checked homework at the top of the page, straight to its checked work (the Homework section is at the
+      // bottom: Class 10, 2026-11-12, Erin did not find it there).
+      const checked = c.tasks.filter((t) => t.group === 'homework' && t.state === 'checked');
+      const checkedLines = checked.map((t) => `<a class="nd-checked-line" href="${N.taskHref(t.id)}"><span class="mark" aria-hidden="true">✓</span><span><strong>Homework checked 作业已批改${t.outOf !== undefined && t.outOf !== '' ? ` · ${N.esc(t.score)} / ${N.esc(t.outOf)}` : ''}</strong>${checked.length > 1 ? `<small>${N.esc(t.label)}</small>` : ''}</span><span class="go">See feedback 查看批改 →</span></a>`).join('');
       app.innerHTML = `
         <p class="nd-back"><a href="../">← Class Logbook</a></p>
         <p class="nd-kicker">Class ${N.esc(c.number)} · ${N.esc(N.longDate(c.date))}</p>
         <h1>${N.esc(c.title)}</h1>
         ${c.focus ? `<p class="nd-lead">${N.esc(c.focus)}</p>` : ''}
+        ${checkedLines}
         <div class="nd-actions"><button class="nd-btn quiet" type="button" id="print">Print / Save as PDF<small>打印或存为 PDF</small></button></div>
         <section class="nd-section" id="class-handout"><h2>Class Handout <small>课堂讲义</small></h2>${handouts}</section>
         <section class="nd-section" id="class-summary"><h2>Class Summary <small>课堂总结</small></h2>${summary}</section>

@@ -155,9 +155,16 @@
     const top = app.querySelector('[data-top]');
     if (S.submission) {
       const r = S.submission.result || {};
-      let html = `<p class="nd-banner">Submitted · ${N.esc(N.when(S.submission.submittedAt))}<small>${r.released ? (r.pending ? 'Part of this task is still waiting for your teacher. 部分题目还在等老师批改。' : 'Your feedback is below. 批改结果见下方。') : 'Waiting for your teacher to review. 已提交，等待老师批改。'}</small></p>`;
-      if (r.released && (r.outOf !== '' || r.overall)) {
-        html += `<div class="nd-result"><h2>Feedback 批改结果</h2>${r.outOf !== '' ? `<p class="nd-score">${N.esc(r.score)} / ${N.esc(r.outOf)}</p>` : ''}${r.overall ? `<p class="nd-pre">${N.esc(r.overall)}</p>` : ''}</div>`;
+      const score = r.outOf !== undefined && r.outOf !== '' ? `<p class="nd-score">${N.esc(r.score)} / ${N.esc(r.outOf)}</p>` : '';
+      const overall = r.overall ? `<p class="nd-pre">${N.esc(r.overall)}</p>` : '';
+      let html = '';
+      if (r.released && !r.pending) {
+        // Fully checked: one box at the top with the score, the overall comment and a link to each checked answer
+        // (Class 10, 2026-11-12: Erin did not find her checked work further down the page). Links: showFeedback().
+        html = `<section class="nd-result is-checked" id="checked"><h2>✓ Checked 已批改</h2>${score}<p class="nd-note">Submitted 提交于 ${N.esc(N.when(S.submission.submittedAt))}</p>${overall}<div data-jumps></div></section>`;
+      } else {
+        html = `<p class="nd-banner">Submitted · ${N.esc(N.when(S.submission.submittedAt))}<small>${r.released ? 'Part of this task is still waiting for your teacher. 部分题目还在等老师批改。' : 'Waiting for your teacher to review. 已提交，等待老师批改。'}</small></p>`;
+        if (r.released && (score || overall)) html += `<div class="nd-result"><h2>Feedback 批改结果</h2>${score}${overall}</div>`;
       }
       if (S.submission.transcriptHtml) html += `<details class="nd-fold"><summary><small>Transcript</small>Recording transcript 录音稿</summary><div class="nd-fold-body nd-rich">${S.submission.transcriptHtml}</div></details>`;
       top.innerHTML = html;
@@ -250,8 +257,35 @@
       if (i.model) extra.push(`<details><summary>Model answer 参考答案</summary><div class="nd-rich">${i.model}</div></details>`);
       // Her own words with the corrections in them; no process label and no colour key (learner-language rule).
       if (i.transcript) extra.push(`<div class="nd-tx"><p class="nd-tx-head">Your answer, checked 你的回答（批改）</p><div class="nd-pre">${markup(i.transcript)}</div></div>`);
-      box.insertAdjacentHTML('beforeend', `<div class="nd-verdict ${i.verdict}"><p class="label">${labels[i.verdict]}</p>${extra.join('')}</div>`);
+      box.insertAdjacentHTML('beforeend', `<div class="nd-verdict ${i.verdict}" id="checked-${N.esc(i.id)}"><p class="label">${labels[i.verdict]}</p>${extra.join('')}</div>`);
     });
+    drawJumps();
+  }
+
+  // The links in the top box: one per checked answer, in page order, each to that answer's checked part. A long
+  // keyed task (a grammar set) gets the counts and one link to the first checked answer instead.
+  function drawJumps() {
+    const jumps = app.querySelector('[data-jumps]');
+    if (!jumps) return;
+    const boxes = Array.from(app.querySelectorAll('[data-blocks] .nd-verdict[id^="checked-"]'));
+    if (!boxes.length) { jumps.innerHTML = ''; return; }
+    const signs = { correct: '✓', evaluated: '◎', wrong: '✗', blank: '✗', partial: '◐', pending: '…' };
+    const verdictOf = (box) => Object.keys(signs).filter((v) => box.classList.contains(v))[0] || '';
+    const numberOf = (box, index) => {
+      const id = box.id.slice('checked-'.length);
+      const q = items().filter((x) => x.id === id)[0] || {};
+      return q.n || (/^q(\d+)\b/.exec(id) || [])[1] || String(index + 1);
+    };
+    if (boxes.length <= 8) {
+      jumps.innerHTML = `<p class="nd-jumps-head">Go to each answer 查看每题批改</p><p class="nd-jumps">${boxes.map((box, index) => {
+        const v = verdictOf(box);
+        return `<a class="nd-jump ${v}" href="#${box.id}">Q${N.esc(numberOf(box, index))} <span aria-hidden="true">${signs[v] || ''}</span> ↓</a>`;
+      }).join('')}</p>`;
+      return;
+    }
+    const count = (list) => boxes.filter((box) => list.indexOf(verdictOf(box)) >= 0).length;
+    const tally = [['✓', count(['correct'])], ['✗', count(['wrong', 'blank'])], ['◐', count(['partial'])], ['◎', count(['evaluated'])]].filter(([, n]) => n);
+    jumps.innerHTML = `<p class="nd-jumps"><span class="nd-tally">${tally.map(([sign, n]) => `${sign} ${n}`).join(' · ')}</span><a class="nd-jump" href="#${boxes[0].id}">See each answer 查看每题批改 ↓</a></p>`;
   }
 
   // ---------- status bar and timing ----------
@@ -394,6 +428,13 @@
     if (pick && pick.files.length) uploadFiles(pick.dataset.pick, Array.from(pick.files), pick);
   });
   app.addEventListener('click', (event) => {
+    // Scrolled here rather than by the link itself, so it works the same inside the teacher's review page.
+    const jump = event.target.closest('a.nd-jump');
+    if (jump) {
+      const target = document.getElementById(jump.getAttribute('href').slice(1));
+      if (target) { event.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      return;
+    }
     if (event.target.closest('[data-send]')) submit();
     else if (event.target.closest('[data-print]')) window.print();
     const remove = event.target.closest('[data-remove]');

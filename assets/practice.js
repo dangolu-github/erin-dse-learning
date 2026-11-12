@@ -63,7 +63,10 @@
       const lessons = data.echo || [], groups = [];
       lessons.forEach((e) => { let g = groups.find((x) => x.id === e.classId); if (!g) groups.push(g = { id: e.classId, label: e.classLabel, list: [] }); g.list.push(e); });
       groups.sort((a, b) => (a.id < b.id ? 1 : -1));
-      const echo = groups.map((g) => `<details class="nd-paper" data-echo-group="${N.esc(g.id)}"><summary><h3 class="nd-sub">${N.esc(g.label)}</h3><span class="nd-paper-count">${g.list.length}</span></summary>${
+      // Each class's samples link back to that homework's checked work, where the score and comments are (2026-11-12).
+      const checkedLinks = (g) => (data.echoChecked || []).filter((k) => g.list.some((e) => e.taskId === k.id)).map((k) =>
+        `<p class="nd-echo-link"><a href="${N.taskHref(k.id)}">✓ Your checked homework 你的作业批改${k.outOf !== '' && k.outOf !== undefined ? ` · ${N.esc(k.score)} / ${N.esc(k.outOf)}` : ''} →</a></p>`).join('');
+      const echo = groups.map((g) => `<details class="nd-paper" data-echo-group="${N.esc(g.id)}"><summary><h3 class="nd-sub">${N.esc(g.label)}</h3><span class="nd-paper-count">${g.list.length}</span></summary>${checkedLinks(g)}${
         g.list.map((e) => `<div class="nd-echo" data-echo="${N.esc(e.id)}"><h4 class="nd-sub">${N.esc(e.title)}</h4><div data-echo-body style="${palette}"></div><p class="nd-msg" role="status"></p></div>`).join('')}</details>`).join('');
       // The how-to line follows the recordings: read aloud while there are none, listen and repeat once they are in.
       const voiced = lessons.filter((e) => accents.every((a) => e.audio[a] && !e.audio[a].missing)).length;

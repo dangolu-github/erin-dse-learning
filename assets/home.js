@@ -8,8 +8,15 @@
       const todo = data.todo.length
         ? `<div class="nd-cards">${data.todo.map(N.taskCard).join('')}</div>`
         : '<p class="nd-empty">No homework is waiting. 目前没有待完成的作业。</p>';
+      // A class whose homework has been checked says so on its row, with the score (2026-11-12).
+      const checkedMark = (c) => {
+        const list = c.checked || [];
+        if (!list.length) return '';
+        const scores = list.filter((k) => k.outOf !== '' && k.outOf !== undefined).map((k) => `${N.esc(k.score)} / ${N.esc(k.outOf)}`);
+        return `<span class="nd-pill good">✓ Homework checked 作业已批改${scores.length ? ' · ' + scores.join(' · ') : ''}</span>`;
+      };
       const classes = data.classes.length
-        ? `<ol class="nd-log">${data.classes.map((c) => `<li><a href="class/?id=${encodeURIComponent(c.id)}"><span class="num">${N.esc(c.number)}</span><span><strong>${N.esc(c.title)}</strong><span class="date">Class ${N.esc(c.number)} · ${N.esc(N.longDate(c.date))}${c.focus ? ' · ' + N.esc(c.focus) : ''}</span></span><span class="go">Open →</span></a></li>`).join('')}</ol>`
+        ? `<ol class="nd-log">${data.classes.map((c) => `<li><a href="class/?id=${encodeURIComponent(c.id)}"><span class="num">${N.esc(c.number)}</span><span><strong>${N.esc(c.title)}</strong><span class="date">Class ${N.esc(c.number)} · ${N.esc(N.longDate(c.date))}${c.focus ? ' · ' + N.esc(c.focus) : ''}</span>${checkedMark(c)}</span><span class="go">Open →</span></a></li>`).join('')}</ol>`
         : '<p class="nd-empty">Class records will appear here after each class.</p>';
       app.innerHTML = `
         <p class="nd-kicker">Erin · DSE Oral</p>

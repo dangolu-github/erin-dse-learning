@@ -185,6 +185,33 @@ fieldset.nd-q { min-width: 0; }
 .nd-result { margin: 0 0 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 .nd-result h2 { margin: 0 0 6px; font-size: 20px; }
 .nd-score { font-size: 28px; font-weight: 850; color: var(--accent); }
+/* Checked homework found without scrolling (2026-11-12): the box at the top of the task page, its links to each
+   checked answer, the line on the class page, the mark on the home class list and the Listen & Echo link. */
+.nd-result.is-checked { border-color: var(--good); border-left: 6px solid var(--good); }
+.nd-result.is-checked h2 { color: var(--good); }
+.nd-result.is-checked .nd-score { margin: 0; }
+.nd-result.is-checked .nd-note { margin: 2px 0 8px; }
+.nd-jumps-head { margin: 12px 0 0; color: var(--muted); font-size: 13px; font-weight: 800; }
+.nd-jumps { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 0; }
+.nd-jump { display: inline-flex; gap: 6px; align-items: center; min-height: 40px; padding: 6px 14px; border: 1px solid var(--accent); border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 800; text-decoration: none; }
+.nd-jump:hover { background: var(--accent); color: #fff; }
+.nd-jump:focus-visible { outline: 3px solid #d39a2b; outline-offset: 2px; }
+.nd-jump.correct span { color: var(--good); } .nd-jump.wrong span, .nd-jump.blank span { color: var(--bad); } .nd-jump.partial span { color: var(--warn); }
+.nd-jump:hover span { color: inherit; }
+.nd-tally { font-weight: 800; color: var(--ink); }
+.nd-verdict[id^="checked-"] { scroll-margin-top: 84px; }
+.nd-checked-line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; margin: 10px 0 0; padding: 12px 16px; border: 1px solid var(--good); border-left: 6px solid var(--good); border-radius: 12px; background: var(--good-soft); color: var(--ink); text-decoration: none; }
+.nd-checked-line:hover { filter: brightness(.98); }
+.nd-checked-line:focus-visible { outline: 3px solid #d39a2b; outline-offset: 2px; }
+.nd-checked-line .mark { color: var(--good); font-size: 20px; font-weight: 900; }
+.nd-checked-line strong { display: block; color: var(--good); }
+.nd-checked-line small { display: block; color: var(--muted); overflow-wrap: anywhere; }
+.nd-checked-line .go { color: var(--accent); font-weight: 800; white-space: nowrap; }
+.nd-log .nd-pill { margin-top: 4px; }
+.nd-echo-link { margin: 4px 0 10px; }
+.nd-echo-link a { font-weight: 800; text-decoration: none; }
+@media (max-width: 600px) { .nd-checked-line { grid-template-columns: auto minmax(0, 1fr); } .nd-checked-line .go { grid-column: 2; white-space: normal; } }
+@media print { .nd-jumps, .nd-jumps-head, .nd-checked-line { display: none !important; } }
 .nd-pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 /* Teacher-checked transcript with her marks (2026-10-20) */
 .nd-tx { margin: 10px 0 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 16px; line-height: 1.8; }
