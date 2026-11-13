@@ -207,17 +207,23 @@
   // The checked work in the task's own layout (teacher rule, 2026-11-10: 批改页面要延用原提交页面或者题目页面的排版；
   // 答案和批改要直接显示出来). A gap shows the answer where the box was, marked when wrong with the right answer beside
   // it; a choice marks the one chosen and the right one; an optional box left empty is not part of the work.
+  // Grammar or spelling mistakes: their own class and a short word beside the cross.
+  const FORMS = { grammar: ['语法', 'Grammar 语法'], spelling: ['拼写', 'Spelling 拼写'] };
+  const formOf = (i) => (i && Object.prototype.hasOwnProperty.call(FORMS, i.form) && ['wrong', 'partial'].indexOf(i.verdict) >= 0 ? i.form : '');
+  const formTag = (form) => (form ? `<span class="ex-form-tag" title="${N.esc(FORMS[form][1])}">${FORMS[form][0]}</span>` : '');
+
   function markInPlace(box, i) {
     const right = i.correct || i.key || (i.accept || [])[0] || '';
     const wrong = ['wrong', 'blank', 'partial'].indexOf(i.verdict) >= 0;
+    const form = formOf(i);
     const input = box.querySelector('input[type=text][data-input]');
     const inline = Boolean(input);
     if (input) {
       const written = input.value || '';
       const fill = document.createElement('span');
-      fill.className = 'ex-fill' + (written ? '' : ' ex-empty');
+      fill.className = 'ex-fill' + (written ? '' : ' ex-empty') + (form ? ' ex-form' : '');
       fill.innerHTML = (wrong && right ? `${written ? `<del class="ex-del">${N.esc(written)}</del> ` : ''}<ins class="ex-ins">[${N.esc(right)}]</ins>` : N.esc(written) || '&nbsp;') +
-        ` <span class="ex-mark ${i.verdict}" aria-hidden="true">${i.verdict === 'correct' ? '✓' : wrong ? '✗' : ''}</span>`;
+        ` <span class="ex-mark ${form ? 'form' : i.verdict}" aria-hidden="true">${i.verdict === 'correct' ? '✓' : wrong ? '✗' : ''}</span>${formTag(form)}`;
       input.replaceWith(fill);
     }
     const chosen = S.responses[i.id];
@@ -257,7 +263,9 @@
       if (i.model) extra.push(`<details><summary>Model answer 参考答案</summary><div class="nd-rich">${i.model}</div></details>`);
       // Her own words with the corrections in them; no process label and no colour key (learner-language rule).
       if (i.transcript) extra.push(`<div class="nd-tx"><p class="nd-tx-head">Your answer, checked 你的回答（批改）</p><div class="nd-pre">${markup(i.transcript)}</div></div>`);
-      box.insertAdjacentHTML('beforeend', `<div class="nd-verdict ${i.verdict}" id="checked-${N.esc(i.id)}"><p class="label">${labels[i.verdict]}</p>${extra.join('')}</div>`);
+      // The word sits here unless the gap above already carries it.
+      const form = formOf(i);
+      box.insertAdjacentHTML('beforeend', `<div class="nd-verdict ${i.verdict}${form ? ' form' : ''}" id="checked-${N.esc(i.id)}"><p class="label">${labels[i.verdict]}${inline ? '' : formTag(form)}</p>${extra.join('')}</div>`);
     });
     drawJumps();
   }
@@ -279,7 +287,7 @@
     if (boxes.length <= 8) {
       jumps.innerHTML = `<p class="nd-jumps-head">Go to each answer 查看每题批改</p><p class="nd-jumps">${boxes.map((box, index) => {
         const v = verdictOf(box);
-        return `<a class="nd-jump ${v}" href="#${box.id}">Q${N.esc(numberOf(box, index))} <span aria-hidden="true">${signs[v] || ''}</span> ↓</a>`;
+        return `<a class="nd-jump ${v}${box.classList.contains('form') ? ' form' : ''}" href="#${box.id}">Q${N.esc(numberOf(box, index))} <span aria-hidden="true">${signs[v] || ''}</span> ↓</a>`;
       }).join('')}</p>`;
       return;
     }

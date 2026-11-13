@@ -239,7 +239,15 @@ fieldset.nd-q { min-width: 0; }
 .ex-sign.good { color: var(--good); }
 .ex-sign.bad { color: var(--bad); }
 .ex-repair { color: #c01919; }
-@media print { .ex-fill { background: none !important; border-bottom: 1px solid #333 !important; } .ex-del { background: none !important; color: #444 !important; } .ex-ins { background: none !important; color: #c01919 !important; } }
+/* Grammar or spelling mistakes. */
+:root { --form: #6b3fa0; --form-soft: #f1eafa; }
+.ex-form .ex-del { background: var(--form-soft); color: var(--form); text-decoration-color: var(--form); }
+.ex-mark.form, .nd-jump.form span { color: var(--form); }
+.nd-verdict.form { background: var(--form-soft); }
+.nd-verdict.form .label { color: var(--form); }
+.ex-form-tag { display: inline-block; margin-left: 4px; padding: 0 5px; border: 1px solid var(--form); border-radius: 4px; color: var(--form); font-size: 12px; font-weight: 700; line-height: 1.4; vertical-align: middle; }
+@media print { .ex-fill { background: none !important; border-bottom: 1px solid #333 !important; } .ex-del { background: none !important; color: #444 !important; } .ex-ins { background: none !important; color: #c01919 !important; }
+  .ex-form .ex-del, .ex-mark.form, .nd-verdict.form .label, .ex-form-tag { color: #5b2a86 !important; } .ex-form-tag { border-color: #5b2a86 !important; } }
 .nd-submit { margin-top: 26px; padding-top: 20px; border-top: 2px solid var(--line); }
 
 /* Mistake log */
